@@ -1,0 +1,286 @@
+local player = game.Players.LocalPlayer
+local camera = game.Workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("Bino", "Ocean")
+local Tab1 = Window:NewTab("Visuals")
+local Tab2 = Window:NewTab("Player")
+local Section1 = Tab1:NewSection("Main")
+local Section2 = Tab2:NewSection("Main")
+local teleportKey = Enum.KeyCode.LeftControl
+local isCtrlPressed = false
+local lines = {}
+local boxes = {}
+local chamsEnabled = false
+local linesEnabled = false
+local boxesEnabled = false
+local mouse = player:GetMouse()
+local teleportKey = Enum.KeyCode.LeftControl
+local isCtrlPressed = false
+local lineUpdateInterval = 0.1
+local lineUpdateConnection
+local function onKeyPress(input, gameProcessedEvent)
+	if input.KeyCode == teleportKey then
+		isCtrlPressed = input.UserInputState == Enum.UserInputState.Begin
+	end
+end
+function updateLines()
+	for i = #lines, 1, -1 do
+		lines[i]:Destroy()
+		table.remove(lines, i)
+	end
+
+	for _, character in pairs(game.Workspace:GetChildren()) do
+		if character:IsA("Model") and character:FindFirstChild("HumanoidRootPart") and character ~= player.Character then
+			local entityPart = character:FindFirstChild("HumanoidRootPart")
+			if entityPart then
+				local line = Instance.new("Part")
+				line.Name = "Line"
+				line.Anchored = true
+				line.CanCollide = false
+				line.Transparency = 0.5
+				line.BrickColor = BrickColor.new("Bright red")
+				line.Size = Vector3.new(0.1, 0.1, calculateDistance(player.Character.HumanoidRootPart.Position, entityPart.Position))
+				line.CFrame = CFrame.new(player.Character.HumanoidRootPart.Position, entityPart.Position) * CFrame.new(0, 0, -line.Size.Z / 2)
+				line.Parent = workspace
+				table.insert(lines, line)
+			end
+		end
+	end
+end
+local function onMouseClick()
+	if isCtrlPressed then
+		local targetPosition = mouse.Hit.p + Vector3.new(0, 2.5, 0)
+		player.Character:SetPrimaryPartCFrame(CFrame.new(targetPosition))
+	end
+end
+Section1:NewButton("Lines", "Creates Lines form you to each player.", function()
+	linesEnabled = not linesEnabled
+	if linesEnabled then
+		startUpdatingLines()
+	else
+		stopUpdatingLines()
+	end
+
+end)
+UserInputService.InputBegan:Connect(onKeyPress)
+UserInputService.InputEnded:Connect(onKeyPress)
+UserInputService.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		onMouseClick()
+	end
+end)
+function startUpdatingLines()
+	lineUpdateConnection = RunService.Heartbeat:Connect(function()
+		updateLines()
+	end)
+
+	updateLines()
+end
+
+function stopUpdatingLines()
+	if lineUpdateConnection then
+		lineUpdateConnection:Disconnect()
+	end
+
+	for i = #lines, 1, -1 do
+		lines[i]:Destroy()
+		table.remove(lines, i)
+	end
+end
+Section1:NewButton("Chams", "Turns People Neon r15 Rigs.", function()
+	for _, player in pairs(game.Players:GetPlayers()) do
+		if player ~= game.Players.LocalPlayer then 
+			local character = player.Character
+			if character and character:FindFirstChild("HumanoidRootPart") then
+				local entityPart = character:FindFirstChild("HumanoidRootPart")
+				if entityPart then
+					local size = entityPart.Size
+					local box = Instance.new("BoxHandleAdornment")
+					box.Size = size + Vector3.new(0.1, 0.1, 0.1)
+					box.Color3 = Color3.new(1, 0, 0)
+					box.Transparency = 0.5
+					box.AlwaysOnTop = true
+					box.Adornee = entityPart
+					box.Parent = entityPart
+					table.insert(boxes, box)
+				end
+			end
+		end
+	end
+
+	local neonMaterial = Enum.Material.Neon
+	for _, character in pairs(game.Workspace:GetChildren()) do
+		if character:IsA("Model") and character:FindFirstChild("HumanoidRootPart") then
+			local entityPart = character:FindFirstChild("HumanoidRootPart")
+			if entityPart then
+				for _, part in pairs(character:GetChildren()) do
+					if part:IsA("BasePart") then
+						part.Material = neonMaterial
+					end
+				end
+			end
+		end
+	end
+end)
+Section1:NewButton("Random Teleport", "Teleports You To a Random Spot", function()
+	local teleportEnabled = false
+
+	local function toggleTeleport()
+		teleportEnabled = not teleportEnabled
+		if teleportEnabled then
+			local function teleportPlayerRandomly()
+				while teleportEnabled do
+					local randomPosition = Vector3.new(math.random(-100, 100), 5, math.random(-100, 100))
+					player.Character:SetPrimaryPartCFrame(CFrame.new(randomPosition))
+					wait(5)
+				end
+			end
+
+			coroutine.wrap(teleportPlayerRandomly)()
+		end
+	end
+end)
+function calculateDistance(position1, position2)
+	return (position1 - position2).Magnitude
+end
+Section1:NewButton("ESP", "Its ESP", function()
+	local espEnabled = false
+
+	local function toggleESP()
+		espEnabled = not espEnabled
+		if espEnabled then
+			local function updateESP()
+				while espEnabled do
+					for _, character in pairs(game.Players:GetPlayers()) do
+						if character ~= game.Players.LocalPlayer and character.Character and character.Character:FindFirstChild("HumanoidRootPart") then
+							local entityPart = character.Character:FindFirstChild("HumanoidRootPart")
+							if entityPart then
+								local distance = calculateDistance(player.Character.HumanoidRootPart.Position, entityPart.Position)
+								if distance <= 160 then
+									local billboardGui = entityPart:FindFirstChild("EntityInfo")
+									if not billboardGui then
+										billboardGui = Instance.new("BillboardGui")
+										billboardGui.Name = "EntityInfo"
+										billboardGui.AlwaysOnTop = true
+										billboardGui.Size = UDim2.new(0, 200, 0, 100)
+										billboardGui.StudsOffset = Vector3.new(0, 3, 0)
+										billboardGui.Parent = entityPart
+									end
+
+									local textLabel = billboardGui:FindFirstChild("TextLabel")
+									if not textLabel then
+										textLabel = Instance.new("TextLabel")
+										textLabel.Size = UDim2.new(1, 0, 1, 0)
+										textLabel.Text = "Name: " .. character.Name .. "\nHP: " .. (character.Character:FindFirstChild("Humanoid") and character.Character:FindFirstChild("Humanoid").Health or "N/A") .. "\nDistance: " .. distance
+										textLabel.TextColor3 = Color3.new(1, 1, 1)
+										textLabel.Font = Enum.Font.SourceSans
+										textLabel.FontSize = Enum.FontSize.Size14
+										textLabel.BackgroundTransparency = 1
+										textLabel.Parent = billboardGui
+									else
+										textLabel.Text = "Name: " .. character.Name .. "\nHP: " .. (character.Character:FindFirstChild("Humanoid") and character.Character:FindFirstChild("Humanoid").Health or "N/A") .. "\nDistance: " .. distance
+									end
+								elseif entityPart:FindFirstChild("EntityInfo") then
+									entityPart:FindFirstChild("EntityInfo"):Destroy()
+								end
+							end
+						end
+					end
+					wait(0.1)
+				end
+			end
+
+			coroutine.wrap(updateESP)()
+		else
+			for _, character in pairs(game.Players:GetPlayers()) do
+				if character.Character and character.Character:FindFirstChild("HumanoidRootPart") then
+					local entityPart = character.Character:FindFirstChild("HumanoidRootPart")
+					if entityPart:FindFirstChild("EntityInfo") then
+						entityPart:FindFirstChild("EntityInfo"):Destroy()
+					end
+				end
+			end
+		end
+	end
+
+	toggleESP()
+end)
+local rainbowEnabled = false
+Section1:NewButton("Rainbow", "Makes Everything Rainbow", function()
+	rainbowEnabled = not rainbowEnabled
+	if rainbowEnabled then
+		local function updateRainbow()
+			while rainbowEnabled do
+				local newSkyColor = Color3.new(math.random(), math.random(), math.random())
+				game.Lighting.OutdoorAmbient = newSkyColor
+				game.Lighting.Ambient = newSkyColor
+
+				for _, entity in pairs(game.Workspace:GetDescendants()) do
+					if entity:IsA("Model") then
+						local humanoid = entity:FindFirstChild("Humanoid")
+						if humanoid then
+							humanoid.WalkSpeed = math.random(16, 32)
+							humanoid.JumpPower = math.random(50, 100)
+						end
+					elseif entity:IsA("BasePart") and entity.Parent:IsA("Model") then
+						entity.BrickColor = BrickColor.Random()
+					end
+				end
+
+				wait(0.5)
+			end
+		end
+
+		coroutine.wrap(updateRainbow)()
+	else
+		game.Lighting.OutdoorAmbient = Color3.new(0.498039, 0.498039, 0.498039)
+		game.Lighting.Ambient = Color3.new(0.498039, 0.498039, 0.498039)
+
+		for _, entity in pairs(game.Workspace:GetDescendants()) do
+			if entity:IsA("Model") then
+				local humanoid = entity:FindFirstChild("Humanoid")
+				if humanoid then
+					humanoid.WalkSpeed = 16
+					humanoid.JumpPower = 50
+				end
+			elseif entity:IsA("BasePart") and entity.Parent:IsA("Model") then
+			end
+		end
+	end
+end)
+Section2:NewButton("Spin Bot", "Spins You Very Fast.", function()
+	local character = player.Character
+	if character then
+		local humanoid = character:FindFirstChild("Humanoid")
+		if humanoid then
+			local torso = character:FindFirstChild("HumanoidRootPart")
+			if torso then
+				local spinSpeed = 10
+				local spinDuration = 60
+
+				local originalRotation = torso.Rotation
+				local startTime = tick()
+
+				local function spinCharacter()
+					while tick() - startTime < spinDuration do
+						local elapsedTime = tick() - startTime
+						local rotationAngle = elapsedTime * spinSpeed
+						torso.CFrame = torso.CFrame * CFrame.Angles(0, math.rad(rotationAngle), 0)
+						wait(0.03)
+					end
+					torso.Rotation = originalRotation
+				end
+
+				coroutine.wrap(spinCharacter)()
+			end
+		end
+	end
+end)
+Section2:NewSlider("WalkSpeed", "WalkSpeed of your Character.", 500, 0, function(s)
+	game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
+end)
+Section2:NewSlider("JumpPower", "JumpPower of your Character.", 500, 0, function(s)
+	game.Players.LocalPlayer.Character.Humanoid.JumpPower = s
+end)
